@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CoachIA Foot — Générer ma séance</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
+<style>
+    :root {
+        --navy: #0B2545; --navy-deep: #071A33; --green: #2E8B57; --green-bright: #3FAE72;
+        --paper: #F3F5F1; --ink: #16202B;
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: 'Inter', sans-serif; background: var(--paper); color: var(--ink); min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 32px 16px; }
+    .card { background: white; width: 100%; max-width: 480px; border-radius: 10px; overflow: hidden; border: 1px solid #d8dde3; box-shadow: 0 30px 60px -30px rgba(11,37,69,0.35); }
+    .card-header { background: var(--navy-deep); color: white; padding: 26px 28px; }
+    .card-header .eyebrow { font-family: 'JetBrains Mono'; font-size: 11px; color: var(--green-bright); letter-spacing: 0.08em; text-transform: uppercase; margin-bottom: 6px; }
+    .card-header h1 { font-family: 'Oswald'; font-size: 22px; text-transform: uppercase; letter-spacing: 0.02em; }
+    form { padding: 26px 28px 30px; display: flex; flex-direction: column; gap: 20px; }
+    label { display: block; font-size: 13px; font-weight: 600; color: var(--navy); margin-bottom: 6px; }
+    label .hint { font-weight: 400; color: #6b7684; font-size: 12px; display: block; margin-top: 2px; }
+    input, select, textarea {
+        width: 100%; border: 1px solid #d8dde3; border-radius: 6px; padding: 11px 12px;
+        font-family: 'Inter'; font-size: 14px; color: var(--ink); background: #fafbfa;
+    }
+    input:focus, select:focus, textarea:focus { outline: 2px solid var(--green); outline-offset: 1px; border-color: var(--green); }
+    .row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+    .field-group { display: flex; flex-direction: column; gap: 6px; }
+    button[type="submit"] {
+        background: var(--green); color: white; border: none; border-radius: 6px;
+        padding: 14px; font-family: 'Oswald'; font-size: 14px; text-transform: uppercase;
+        letter-spacing: 0.03em; font-weight: 600; cursor: pointer; margin-top: 6px;
+    }
+    button[type="submit"]:hover { background: var(--green-bright); }
+    button[type="submit"]:disabled { background: #a9b4c0; cursor: not-allowed; }
+    .status { font-size: 13px; text-align: center; min-height: 18px; }
+    .status.error { color: #c0392b; }
+    .status.ok { color: var(--green); }
+</style>
+</head>
+<body>
+
+<div class="card">
+    <div class="card-header">
+        <div class="eyebrow">Diogountouro FC — Générateur</div>
+        <h1>Ma séance de la semaine</h1>
+    </div>
+
+    <form id="seance-form">
+        <div class="field-group">
+            <label for="effectif">Effectif disponible
+                <span class="hint">Nombre de joueurs présents cette semaine</span>
+            </label>
+            <input type="number" id="effectif" name="effectif_dispo" min="1" max="30" required>
+        </div>
+
+        <div class="row">
+            <div class="field-group">
+                <label for="duree">Durée totale (min)</label>
+                <input type="number" id="duree" name="duree_totale_min" min="30" max="150" step="5" value="90" required>
+            </div>
+            <div class="field-group">
+                <label for="date">Date de la séance</label>
+                <input type="date" id="date" name="date_seance" required>
+            </div>
+        </div>
+
+        <div class="field-group">
+            <label for="adversaire">Prochain adversaire
+                <span class="hint">Optionnel — laisse vide si pas de match cette semaine</span>
+            </label>
+            <input type="text" id="adversaire" name="adversaire" placeholder="ex : FC Rivalis">
+        </div>
+
+        <div class="field-group">
+            <label for="objectif">Focus particulier
+                <span class="hint">Optionnel — une phase de jeu à travailler en priorité</span>
+            </label>
+            <select id="objectif" name="focus">
+                <option value="">Aucun focus particulier</option>
+                <option value="Transition défensive">Transition défensive</option>
+                <option value="Transition offensive">Transition offensive</option>
+                <option value="Finition">Finition</option>
+                <option value="Bloc défensif">Bloc défensif</option>
+                <option value="Possession">Possession</option>
+            </select>
+        </div>
+
+        <button type="submit" id="submit-btn">Générer ma séance</button>
+        <div class="status" id="status"></div>
+    </form>
+</div>
+
+<script>
+    const form = document.getElementById('seance-form');
+    const statusEl = document.getElementById('status');
+    const btn = document.getElementById('submit-btn');
+
+    form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        btn.disabled = true;
+        btn.textContent = 'Génération en cours…';
+        statusEl.className = 'status';
+        statusEl.textContent = '';
+
+        const payload = Object.fromEntries(new FormData(form).entries());
+
+        try {
+            const res = await fetch('/api/generer-seance', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+
+            if (!res.ok) throw new Error('Erreur serveur');
+
+            const data = await res.json();
+            statusEl.className = 'status ok';
+            statusEl.textContent = 'Séance générée — téléchargement en cours…';
+            window.location.href = data.pdf_url;
+
+        } catch (err) {
+            statusEl.className = 'status error';
+            statusEl.textContent = "La génération a échoué. Réessaie dans un instant.";
+        } finally {
+            btn.disabled = false;
+            btn.textContent = 'Générer ma séance';
+        }
+    });
+</script>
+
+</body>
+</html>

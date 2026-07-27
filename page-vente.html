@@ -1,0 +1,346 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CoachIA Foot — La séance de la semaine, prête en 60 secondes</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
+<style>
+    :root {
+        --navy: #0B2545;
+        --navy-deep: #071A33;
+        --green: #2E8B57;
+        --green-bright: #3FAE72;
+        --paper: #F3F5F1;
+        --ink: #16202B;
+        --line: #223a5e;
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+        font-family: 'Inter', sans-serif;
+        background: var(--paper);
+        color: var(--ink);
+        line-height: 1.5;
+    }
+    h1, h2, h3, .display {
+        font-family: 'Oswald', sans-serif;
+        text-transform: uppercase;
+        letter-spacing: 0.02em;
+    }
+    .mono { font-family: 'JetBrains Mono', monospace; }
+    a { text-decoration: none; color: inherit; }
+    .wrap { max-width: 1080px; margin: 0 auto; padding: 0 24px; }
+
+    /* ---------- NAV ---------- */
+    nav {
+        position: sticky; top: 0; z-index: 50;
+        background: var(--navy-deep);
+        border-bottom: 1px solid var(--line);
+    }
+    nav .wrap { display: flex; align-items: center; justify-content: space-between; height: 64px; }
+    .brand { color: white; font-family: 'Oswald'; font-weight: 600; font-size: 18px; letter-spacing: 0.04em; display: flex; align-items: center; gap: 8px; }
+    .brand .dot { width: 10px; height: 10px; border-radius: 50%; background: var(--green-bright); }
+    .nav-cta {
+        background: var(--green);
+        color: white; font-weight: 600; font-size: 13px;
+        padding: 9px 18px; border-radius: 4px;
+        text-transform: uppercase; letter-spacing: 0.04em;
+    }
+
+    /* ---------- HERO ---------- */
+    .hero {
+        background: radial-gradient(ellipse at top right, #0f3060 0%, var(--navy-deep) 60%);
+        color: white;
+        padding: 72px 0 96px;
+        overflow: hidden;
+        position: relative;
+    }
+    .hero .wrap { display: grid; grid-template-columns: 1.1fr 0.9fr; gap: 56px; align-items: center; }
+    .eyebrow {
+        color: var(--green-bright); font-size: 12px; font-weight: 600;
+        letter-spacing: 0.12em; text-transform: uppercase; margin-bottom: 14px;
+    }
+    .hero h1 { font-size: 42px; line-height: 1.12; font-weight: 700; margin-bottom: 20px; }
+    .hero h1 span { color: var(--green-bright); }
+    .hero p.sub { font-size: 16px; color: #c3cee0; max-width: 46ch; margin-bottom: 30px; }
+    .hero-ctas { display: flex; gap: 14px; align-items: center; }
+    .btn-primary {
+        background: var(--green); color: white; font-weight: 600; font-size: 14px;
+        padding: 14px 26px; border-radius: 4px; display: inline-block;
+        text-transform: uppercase; letter-spacing: 0.03em;
+        transition: background 0.15s ease;
+    }
+    .btn-primary:hover { background: var(--green-bright); }
+    .btn-ghost { color: #c3cee0; font-size: 14px; font-weight: 500; border-bottom: 1px solid #435a7d; padding-bottom: 2px; }
+
+    /* -- plateau tactique (signature) -- */
+    .board {
+        position: relative;
+        background: linear-gradient(180deg, #1c6b40, #16512f);
+        border: 3px solid rgba(255,255,255,0.15);
+        border-radius: 10px;
+        aspect-ratio: 3/4;
+        box-shadow: 0 30px 60px -20px rgba(0,0,0,0.6);
+    }
+    .board::before {
+        content: ""; position: absolute; inset: 14px;
+        border: 1.5px solid rgba(255,255,255,0.25); border-radius: 4px;
+    }
+    .board::after {
+        content: ""; position: absolute; left: 50%; top: 14px; bottom: 14px;
+        width: 1.5px; background: rgba(255,255,255,0.25); transform: translateX(-50%);
+    }
+    .board .center-circle {
+        position: absolute; left: 50%; top: 50%; width: 90px; height: 90px;
+        border: 1.5px solid rgba(255,255,255,0.25); border-radius: 50%;
+        transform: translate(-50%, -50%);
+    }
+    .player {
+        position: absolute; width: 26px; height: 26px; border-radius: 50%;
+        background: var(--navy); color: white; font-size: 11px; font-weight: 700;
+        display: flex; align-items: center; justify-content: center;
+        transform: translate(-50%, -50%);
+        box-shadow: 0 4px 10px rgba(0,0,0,0.35);
+        font-family: 'JetBrains Mono';
+    }
+    .board-caption {
+        position: absolute; bottom: -38px; left: 0; right: 0;
+        text-align: center; color: #c3cee0; font-size: 12px;
+        font-family: 'JetBrains Mono';
+    }
+
+    /* ---------- BANDE PREUVE ---------- */
+    .proof {
+        background: var(--navy); border-top: 1px solid var(--line); border-bottom: 1px solid var(--line);
+        padding: 22px 0;
+    }
+    .proof .wrap { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 20px; color: #9fb0c9; font-size: 13px; }
+    .proof strong { color: white; font-family: 'JetBrains Mono'; font-size: 15px; }
+
+    /* ---------- SECTION GENERIQUE ---------- */
+    section { padding: 84px 0; }
+    .section-head { max-width: 60ch; margin-bottom: 48px; }
+    .section-head .eyebrow { color: var(--green); }
+    .section-head h2 { color: var(--navy); font-size: 30px; margin-bottom: 12px; }
+    .section-head p { color: #4a5568; font-size: 15px; }
+
+    /* ---------- COMMENT CA MARCHE (agenda match style) ---------- */
+    .fixture-list { border-top: 1px solid #d8dde3; }
+    .fixture {
+        display: grid; grid-template-columns: 90px 1fr 2fr;
+        gap: 24px; align-items: start;
+        padding: 26px 0; border-bottom: 1px solid #d8dde3;
+    }
+    .fixture .time { font-family: 'JetBrains Mono'; color: var(--green); font-weight: 600; font-size: 14px; }
+    .fixture h3 { color: var(--navy); font-size: 17px; margin-bottom: 6px; }
+    .fixture p { color: #4a5568; font-size: 14px; }
+
+    /* ---------- FICHE PREVIEW ---------- */
+    .preview-card {
+        background: white; border-radius: 10px; border: 1px solid #d8dde3;
+        overflow: hidden; box-shadow: 0 20px 50px -30px rgba(11,37,69,0.4);
+    }
+    .preview-header { background: var(--navy); color: white; padding: 16px 22px; display: flex; justify-content: space-between; align-items: center; }
+    .preview-header .badge { background: var(--green); font-size: 11px; padding: 4px 10px; border-radius: 12px; font-weight: 600; }
+    .preview-body { padding: 22px; display: flex; flex-direction: column; gap: 12px; }
+    .ex-row { display: flex; border: 1px solid #e2e5e8; border-radius: 6px; overflow: hidden; }
+    .ex-row .dur { background: var(--navy); color: white; min-width: 56px; display: flex; align-items: center; justify-content: center; font-family: 'JetBrains Mono'; font-weight: 600; font-size: 13px; }
+    .ex-row .info { padding: 10px 14px; }
+    .ex-row .cat { font-size: 10px; text-transform: uppercase; color: var(--green); font-weight: 700; letter-spacing: 0.04em; }
+    .ex-row .titre { font-size: 13px; font-weight: 600; color: var(--navy); }
+
+    /* ---------- TARIFS ---------- */
+    .pricing-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; }
+    .plan {
+        background: white; border: 1px solid #d8dde3; border-radius: 10px;
+        padding: 32px 26px; display: flex; flex-direction: column; gap: 18px;
+    }
+    .plan.featured { border: 2px solid var(--green); position: relative; transform: translateY(-8px); box-shadow: 0 25px 50px -25px rgba(46,139,87,0.35); }
+    .plan.featured::before {
+        content: "Le plus choisi"; position: absolute; top: -13px; left: 50%; transform: translateX(-50%);
+        background: var(--green); color: white; font-size: 11px; font-weight: 700;
+        padding: 5px 14px; border-radius: 20px; letter-spacing: 0.03em;
+    }
+    .plan .plan-name { font-family: 'Oswald'; text-transform: uppercase; color: var(--navy); font-size: 16px; letter-spacing: 0.03em; }
+    .plan .price { font-family: 'Oswald'; font-size: 40px; color: var(--navy); }
+    .plan .price span { font-family: 'Inter'; font-size: 14px; color: #6b7684; font-weight: 500; text-transform: none; }
+    .plan .plan-desc { font-size: 13px; color: #6b7684; }
+    .plan ul { list-style: none; display: flex; flex-direction: column; gap: 10px; font-size: 13.5px; color: #34404d; }
+    .plan ul li { display: flex; gap: 8px; align-items: flex-start; }
+    .plan ul li::before { content: "✓"; color: var(--green); font-weight: 700; }
+    .plan .btn-primary { text-align: center; margin-top: auto; }
+    .plan.simple .btn-primary { background: var(--navy); }
+
+    /* ---------- CTA FINAL ---------- */
+    .cta-final { background: var(--navy-deep); color: white; text-align: center; }
+    .cta-final h2 { font-size: 30px; margin-bottom: 14px; }
+    .cta-final p { color: #c3cee0; max-width: 50ch; margin: 0 auto 30px; font-size: 15px; }
+
+    footer { padding: 30px 0; text-align: center; color: #8a94a3; font-size: 12px; background: var(--navy-deep); border-top: 1px solid var(--line); }
+
+    @media (max-width: 860px) {
+        .hero .wrap { grid-template-columns: 1fr; }
+        .hero h1 { font-size: 32px; }
+        .pricing-grid { grid-template-columns: 1fr; }
+        .plan.featured { transform: none; }
+        .fixture { grid-template-columns: 60px 1fr; }
+        .fixture > div:nth-child(3) { grid-column: 1 / -1; }
+    }
+</style>
+</head>
+<body>
+
+<nav>
+    <div class="wrap">
+        <div class="brand"><span class="dot"></span>CoachIA Foot</div>
+        <a href="#tarifs" class="nav-cta">Essayer 14 jours</a>
+    </div>
+</nav>
+
+<header class="hero">
+    <div class="wrap">
+        <div>
+            <div class="eyebrow">Pour les coachs amateurs &amp; semi-pro</div>
+            <h1>La séance de la semaine, <span>prête en 60 secondes.</span></h1>
+            <p class="sub">Dis-nous qui est disponible et qui vous affrontez dimanche. L'IA construit une séance complète adaptée à votre effectif — et se souvient de tout ce que vous avez déjà travaillé, pour ne jamais répéter deux fois le même exercice.</p>
+            <div class="hero-ctas">
+                <a href="#tarifs" class="btn-primary">Générer ma première séance</a>
+                <a href="#comment" class="btn-ghost">Voir comment ça marche</a>
+            </div>
+            <div style="margin-top:22px; font-size:12px; color:#8fa2c2; font-family:'JetBrains Mono';">
+                CONÇU SUR LE TERRAIN AVEC DIOGOUNTOURO FC
+            </div>
+        </div>
+
+        <div>
+            <div class="board">
+                <div class="center-circle"></div>
+                <!-- 4-3-3 -->
+                <div class="player" style="left:50%; top:92%;">GB</div>
+                <div class="player" style="left:15%; top:75%;">2</div>
+                <div class="player" style="left:38%; top:80%;">4</div>
+                <div class="player" style="left:62%; top:80%;">5</div>
+                <div class="player" style="left:85%; top:75%;">3</div>
+                <div class="player" style="left:25%; top:52%;">6</div>
+                <div class="player" style="left:50%; top:48%;">8</div>
+                <div class="player" style="left:75%; top:52%;">10</div>
+                <div class="player" style="left:15%; top:20%;">7</div>
+                <div class="player" style="left:50%; top:12%;">9</div>
+                <div class="player" style="left:85%; top:20%;">11</div>
+                <div class="board-caption">DIOGOUNTOURO FC — 4-3-3 — SAMEDI</div>
+            </div>
+        </div>
+    </div>
+</header>
+
+<div class="proof">
+    <div class="wrap">
+        <div><strong>90 sec</strong> pour générer une séance complète</div>
+        <div><strong>0</strong> exercice répété d'une semaine à l'autre</div>
+        <div><strong>PDF</strong> brandé aux couleurs du club, prêt à imprimer</div>
+    </div>
+</div>
+
+<section id="comment">
+    <div class="wrap">
+        <div class="section-head">
+            <div class="eyebrow display">Comment ça marche</div>
+            <h2>Trois informations. Une séance complète.</h2>
+            <p>Pas de configuration compliquée. L'outil s'adapte à votre réalité de terrain, semaine après semaine.</p>
+        </div>
+
+        <div class="fixture-list">
+            <div class="fixture">
+                <div class="time mono">01</div>
+                <div><h3>Votre effectif du moment</h3><p>Blessés, suspendus, joueurs de retour — l'IA construit la séance pour le groupe que vous avez réellement, pas un effectif théorique.</p></div>
+                <div></div>
+            </div>
+            <div class="fixture">
+                <div class="time mono">02</div>
+                <div><h3>L'objectif de la semaine</h3><p>Un adversaire à préparer, une phase de jeu à travailler — l'outil oriente au moins un exercice en conséquence.</p></div>
+                <div></div>
+            </div>
+            <div class="fixture">
+                <div class="time mono">03</div>
+                <div><h3>La mémoire du club</h3><p>Chaque séance générée est enregistrée. L'IA ne vous refait jamais le même rondo deux semaines de suite — elle fait progresser le groupe sur toute la saison.</p></div>
+                <div class="preview-card" style="margin-top:6px;">
+                    <div class="preview-header">
+                        <span style="font-family:'Oswald'; font-size:14px; text-transform:uppercase;">Diogountouro FC — Samedi</span>
+                        <span class="badge">4-3-3</span>
+                    </div>
+                    <div class="preview-body">
+                        <div class="ex-row"><div class="dur">15'</div><div class="info"><div class="cat">Activation</div><div class="titre">Course + gammes techniques</div></div></div>
+                        <div class="ex-row"><div class="dur">20'</div><div class="info"><div class="cat">Possession</div><div class="titre">Conservation 6v6 + 2 jokers</div></div></div>
+                        <div class="ex-row"><div class="dur">25'</div><div class="info"><div class="cat">Tactique</div><div class="titre">Bloc médian face à un 4-4-2</div></div></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<section style="background:white; border-top:1px solid #d8dde3; border-bottom:1px solid #d8dde3;" id="tarifs">
+    <div class="wrap">
+        <div class="section-head">
+            <div class="eyebrow display" style="color:var(--green);">Tarifs</div>
+            <h2>Un abonnement par club, pas par entraîneur.</h2>
+            <p>Toutes les formules incluent 14 jours d'essai. Résiliable à tout moment.</p>
+        </div>
+
+        <div class="pricing-grid">
+            <div class="plan simple">
+                <div class="plan-name">Solo</div>
+                <div class="price">19€<span>/mois</span></div>
+                <div class="plan-desc">Pour l'entraîneur d'une seule équipe.</div>
+                <ul>
+                    <li>1 équipe, effectif illimité</li>
+                    <li>Séances illimitées</li>
+                    <li>Export PDF brandé</li>
+                    <li>Mémoire des séances passées</li>
+                </ul>
+                <a href="#" class="btn-primary">Démarrer l'essai</a>
+            </div>
+
+            <div class="plan featured">
+                <div class="plan-name">Club</div>
+                <div class="price">49€<span>/mois</span></div>
+                <div class="plan-desc">Pour un club avec plusieurs catégories.</div>
+                <ul>
+                    <li>Toutes les équipes du club</li>
+                    <li>Staff partagé (plusieurs coachs)</li>
+                    <li>Séances illimitées, toutes catégories</li>
+                    <li>Plan de match adapté à l'adversaire</li>
+                    <li>Support prioritaire</li>
+                </ul>
+                <a href="#" class="btn-primary">Démarrer l'essai</a>
+            </div>
+
+            <div class="plan simple">
+                <div class="plan-name">Ligue / District</div>
+                <div class="price mono" style="font-family:'Oswald'; font-size:26px;">Sur devis</div>
+                <div class="plan-desc">Pour équiper plusieurs clubs d'un même district.</div>
+                <ul>
+                    <li>Déploiement multi-clubs</li>
+                    <li>Tableau de bord district</li>
+                    <li>Accompagnement dédié</li>
+                </ul>
+                <a href="#" class="btn-primary" style="background:var(--navy);">Nous contacter</a>
+            </div>
+        </div>
+    </div>
+</section>
+
+<section class="cta-final">
+    <div class="wrap">
+        <h2>Votre prochaine séance vous attend.</h2>
+        <p>Trois questions, une séance complète, un PDF prêt pour le terrain samedi.</p>
+        <a href="#tarifs" class="btn-primary">Générer ma première séance gratuitement</a>
+    </div>
+</section>
+
+<footer>CoachIA Foot — Outil conçu par des entraîneurs de terrain.</footer>
+
+</body>
+</html>
