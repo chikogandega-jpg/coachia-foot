@@ -1,0 +1,8 @@
+__pycache__/
+*.pyc
+.env
+coachia.db
+output/*.pdf
+output/*.html
+output/*.png
+.DS_Store
