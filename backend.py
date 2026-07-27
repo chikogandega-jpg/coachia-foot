@@ -14,7 +14,7 @@ import os
 
 from pipeline_seance import generer_contenu_seance, generer_pdf  # réutilise le script précédent
 
-app = Flask(__name__)
+app = Flask(__name__, static_folder="static")
 DB_PATH = "coachia.db"
 
 
@@ -78,15 +78,35 @@ def get_ou_creer_club(email: str) -> dict:
     conn = sqlite3.connect(DB_PATH)
     conn.row_factory = sqlite3.Row
     club = conn.execute("SELECT * FROM clubs WHERE email = ?", (email,)).fetchone()
-    conn.close()
+
     if club is None:
-        raise ValueError("Club inconnu — doit être créé lors de l'inscription")
+        # Club de démo créé automatiquement au premier essai — à remplacer
+        # par un vrai formulaire d'inscription une fois les premiers clients validés.
+        conn.execute(
+            """INSERT INTO clubs (nom, email, formation, couleur_primaire, couleur_secondaire)
+               VALUES (?, ?, ?, ?, ?)""",
+            ("Diogountouro FC", email, "4-3-3", "#0B2545", "#2E8B57")
+        )
+        conn.commit()
+        club = conn.execute("SELECT * FROM clubs WHERE email = ?", (email,)).fetchone()
+
+    conn.close()
     return dict(club)
 
 
 # ---------------------------------------------------------------------------
 # Route principale appelée par le formulaire
 # ---------------------------------------------------------------------------
+
+@app.route("/")
+def accueil():
+    return send_from_directory("static", "formulaire.html")
+
+
+@app.route("/vente")
+def page_vente():
+    return send_from_directory("static", "page-vente.html")
+
 
 @app.route("/api/generer-seance", methods=["POST"])
 def api_generer_seance():
@@ -128,6 +148,12 @@ def servir_pdf(filename):
     return send_from_directory("output", filename)
 
 
+# Initialisation de la base au chargement du module — nécessaire car gunicorn
+# n'exécute jamais le bloc `if __name__ == "__main__"` ci-dessous.
+init_db()
+os.makedirs("output", exist_ok=True)
+
+
 if __name__ == "__main__":
-    init_db()
     app.run(debug=True, port=5000)
+
