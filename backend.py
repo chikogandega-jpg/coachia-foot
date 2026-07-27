@@ -14,7 +14,7 @@ import os
 
 from pipeline_seance import generer_contenu_seance, generer_pdf  # réutilise le script précédent
 
-app = Flask(__name__, static_folder="static")
+app = Flask(__name__)
 DB_PATH = "coachia.db"
 
 
@@ -100,12 +100,12 @@ def get_ou_creer_club(email: str) -> dict:
 
 @app.route("/")
 def accueil():
-    return send_from_directory("static", "formulaire.html")
+    return send_from_directory(".", "formulaire.html")
 
 
 @app.route("/vente")
 def page_vente():
-    return send_from_directory("static", "page-vente.html")
+    return send_from_directory(".", "page-vente.html")
 
 
 @app.route("/api/generer-seance", methods=["POST"])
