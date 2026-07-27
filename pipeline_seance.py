@@ -108,11 +108,11 @@ def generer_pdf(club: dict, contenu_seance: dict, contexte_semaine: dict) -> Pat
     html = TEMPLATE_PATH.read_text(encoding="utf-8")
 
     remplacements = {
-        "{{club_nom}}": club["nom"],
-        "{{logo_url}}": club["logo_url"],
-        "{{couleur_primaire}}": club["couleur_primaire"],
-        "{{couleur_secondaire}}": club["couleur_secondaire"],
-        "{{formation}}": club["formation"],
+        "{{club_nom}}": club["nom"] or "Mon Club",
+        "{{logo_url}}": club.get("logo_url") or "https://placehold.co/80x80?text=Logo",
+        "{{couleur_primaire}}": club["couleur_primaire"] or "#0B2545",
+        "{{couleur_secondaire}}": club["couleur_secondaire"] or "#2E8B57",
+        "{{formation}}": club["formation"] or "4-3-3",
         "{{effectif_dispo}}": str(contexte_semaine["effectif_dispo"]),
         "{{date_seance}}": contexte_semaine["date_seance"],
         "{{objectif_semaine}}": contenu_seance["objectif_semaine"],
@@ -121,7 +121,7 @@ def generer_pdf(club: dict, contenu_seance: dict, contexte_semaine: dict) -> Pat
     }
 
     for cle, valeur in remplacements.items():
-        html = html.replace(cle, valeur)
+        html = html.replace(cle, str(valeur))
 
     slug = club["nom"].lower().replace(" ", "_")
     html_path = OUTPUT_DIR / f"seance_{slug}.html"
