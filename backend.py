@@ -1,180 +1,143 @@
 """
-CoachIA Foot — Pipeline de génération de séance
-=================================================
-Entrée  : profil du club + contexte de la semaine (effectif, adversaire, objectif)
-Sortie  : PDF de séance brandé, prêt à imprimer
+CoachIA Foot — Backend API
+===========================
+Reçoit les données du formulaire, appelle le pipeline de génération,
+et renvoie le lien du PDF.
 
-Étapes :
-1. Appel API Claude -> génère le contenu de la séance en JSON strict
-2. Injection du JSON dans le template HTML paramétrique
-3. Rendu PDF via wkhtmltopdf
-4. Vérification visuelle optionnelle via pdf2image
+Dépendances : flask, anthropic, psycopg2 (ou sqlite3 pour un MVP local)
 """
 
-import json
-import subprocess
-import datetime
-from pathlib import Path
-import anthropic
+from flask import Flask, request, jsonify, send_from_directory
+from datetime import date
+import sqlite3
+import os
 
-client = anthropic.Anthropic()  # clé API lue depuis l'environnement
+from pipeline_seance import generer_contenu_seance, generer_pdf
 
-TEMPLATE_PATH = Path("template_seance.html")
-OUTPUT_DIR = Path("output")
-OUTPUT_DIR.mkdir(exist_ok=True)
+app = Flask(__name__)
+DB_PATH = "coachia.db"
 
 
-# ---------------------------------------------------------------------------
-# 1. Génération du contenu de la séance via l'IA
-# ---------------------------------------------------------------------------
+def init_db():
+    conn = sqlite3.connect(DB_PATH)
+    conn.executescript("""
+    CREATE TABLE IF NOT EXISTS clubs (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        nom TEXT NOT NULL,
+        email TEXT UNIQUE NOT NULL,
+        logo_url TEXT,
+        couleur_primaire TEXT DEFAULT '#0B2545',
+        couleur_secondaire TEXT DEFAULT '#2E8B57',
+        formation TEXT DEFAULT '4-3-3',
+        formule TEXT DEFAULT 'solo',
+        date_debut_essai DATE,
+        actif BOOLEAN DEFAULT 1
+    );
 
-def generer_contenu_seance(club: dict, contexte_semaine: dict, historique: list) -> dict:
-    """
-    Appelle Claude pour générer une séance adaptée.
-    Renvoie un JSON strict (pas de texte libre) pour pouvoir l'injecter
-    directement dans le template sans parsing fragile.
-    """
+    CREATE TABLE IF NOT EXISTS seances (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        club_id INTEGER NOT NULL REFERENCES clubs(id),
+        date_seance DATE NOT NULL,
+        effectif_dispo INTEGER,
+        adversaire TEXT,
+        focus TEXT,
+        exercices_json TEXT,
+        pdf_path TEXT,
+        cree_le TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    );
 
-    system_prompt = """Tu es un entraîneur de football expérimenté qui conçoit des séances
-d'entraînement. Tu dois répondre UNIQUEMENT avec un objet JSON valide, sans
-texte avant ou après, sans balises markdown. Le format attendu est strictement :
-
-{
-  "objectif_semaine": "phrase courte décrivant l'objectif",
-  "exercices": [
-    {
-      "duree_min": 15,
-      "titre": "Nom de l'exercice",
-      "categorie": "Activation | Passes | Finition | Possession | Tactique",
-      "consigne": "description concrète et actionnable, 2-3 phrases max"
-    }
-  ]
-}
-
-Règles :
-- La somme des durées doit correspondre à la durée totale de séance demandée.
-- Ne jamais proposer un exercice déjà présent dans l'historique récent fourni.
-- Adapter la difficulté et l'intensité à l'effectif disponible indiqué.
-- Si un adversaire est précisé, orienter au moins un exercice vers cette
-  préparation (bloc défensif, transitions, etc.)."""
-
-    user_prompt = f"""Club : {club['nom']}, formation habituelle {club['formation']}
-Effectif disponible cette semaine : {contexte_semaine['effectif_dispo']} joueurs
-Durée totale de la séance : {contexte_semaine['duree_totale_min']} minutes
-Prochain adversaire : {contexte_semaine.get('adversaire', 'non précisé')}
-Exercices déjà travaillés récemment (à éviter) : {historique}
-
-Génère la séance de la semaine."""
-
-    response = client.messages.create(
-        model="claude-sonnet-4-5",
-        max_tokens=2000,
-        system=system_prompt,
-        messages=[{"role": "user", "content": user_prompt}],
-    )
-
-    raw_text = response.content[0].text.strip()
-    # sécurité : au cas où le modèle ajoute des balises malgré la consigne
-    raw_text = raw_text.replace("```json", "").replace("```", "").strip()
-
-    return json.loads(raw_text)
+    CREATE INDEX IF NOT EXISTS idx_seances_club ON seances(club_id, date_seance);
+    """)
+    conn.commit()
+    conn.close()
 
 
-# ---------------------------------------------------------------------------
-# 2. Construction du bloc HTML des exercices
-# ---------------------------------------------------------------------------
+def get_historique_exercices(club_id: int, limite: int = 15) -> list:
+    conn = sqlite3.connect(DB_PATH)
+    rows = conn.execute(
+        "SELECT exercices_json FROM seances WHERE club_id = ? ORDER BY date_seance DESC LIMIT ?",
+        (club_id, limite)
+    ).fetchall()
+    conn.close()
 
-def construire_blocs_exercices(exercices: list) -> str:
-    blocs = []
-    for ex in exercices:
-        bloc = f"""
-        <div class="exercice">
-            <div class="duree">{ex['duree_min']}'</div>
-            <div class="detail">
-                <span class="categorie">{ex['categorie']}</span>
-                <span class="titre">{ex['titre']}</span>
-                <span class="consigne">{ex['consigne']}</span>
-            </div>
-        </div>"""
-        blocs.append(bloc)
-    return "\n".join(blocs)
+    import json
+    titres = []
+    for (exercices_json,) in rows:
+        if exercices_json:
+            for ex in json.loads(exercices_json):
+                titres.append(ex.get("titre"))
+    return titres
 
 
-# ---------------------------------------------------------------------------
-# 3. Injection dans le template + génération du PDF
-# ---------------------------------------------------------------------------
+def get_ou_creer_club(email: str) -> dict:
+    conn = sqlite3.connect(DB_PATH)
+    conn.row_factory = sqlite3.Row
+    club = conn.execute("SELECT * FROM clubs WHERE email = ?", (email,)).fetchone()
 
-def generer_pdf(club: dict, contenu_seance: dict, contexte_semaine: dict) -> Path:
-    html = TEMPLATE_PATH.read_text(encoding="utf-8")
+    if club is None:
+        conn.execute(
+            """INSERT INTO clubs (nom, email, formation, couleur_primaire, couleur_secondaire)
+               VALUES (?, ?, ?, ?, ?)""",
+            ("Diogountouro FC", email, "4-3-3", "#0B2545", "#2E8B57")
+        )
+        conn.commit()
+        club = conn.execute("SELECT * FROM clubs WHERE email = ?", (email,)).fetchone()
 
-    remplacements = {
-        "{{club_nom}}": club["nom"] or "Mon Club",
-        "{{logo_url}}": club.get("logo_url") or "https://placehold.co/80x80?text=Logo",
-        "{{couleur_primaire}}": club["couleur_primaire"] or "#0B2545",
-        "{{couleur_secondaire}}": club["couleur_secondaire"] or "#2E8B57",
-        "{{formation}}": club["formation"] or "4-3-3",
-        "{{effectif_dispo}}": str(contexte_semaine["effectif_dispo"]),
-        "{{date_seance}}": contexte_semaine["date_seance"],
-        "{{objectif_semaine}}": contenu_seance["objectif_semaine"],
-        "{{blocs_exercices}}": construire_blocs_exercices(contenu_seance["exercices"]),
-        "{{date_generation}}": datetime.date.today().strftime("%d/%m/%Y"),
-    }
-
-    for cle, valeur in remplacements.items():
-        html = html.replace(cle, str(valeur))
-
-    slug = club["nom"].lower().replace(" ", "_")
-    html_path = OUTPUT_DIR / f"seance_{slug}.html"
-    pdf_path = OUTPUT_DIR / f"seance_{slug}.pdf"
-    html_path.write_text(html, encoding="utf-8")
-
-    # Commande confirmée dans ton workflow existant : marges zéro, format A4
-    subprocess.run([
-        "wkhtmltopdf",
-        "--page-size", "A4",
-        "--margin-top", "0", "--margin-bottom", "0",
-        "--margin-left", "0", "--margin-right", "0",
-        "--enable-local-file-access",
-        str(html_path), str(pdf_path)
-    ], check=True)
-
-    return pdf_path
+    conn.close()
+    return dict(club)
 
 
-# ---------------------------------------------------------------------------
-# 4. Vérification visuelle (optionnelle, reprend ton usage de pdf2image)
-# ---------------------------------------------------------------------------
-
-def verifier_visuellement(pdf_path: Path):
-    from pdf2image import convert_from_path
-    images = convert_from_path(str(pdf_path), dpi=100)
-    preview_path = pdf_path.with_suffix(".png")
-    images[0].save(preview_path)
-    return preview_path
+@app.route("/")
+def accueil():
+    return send_from_directory(".", "formulaire.html")
 
 
-# ---------------------------------------------------------------------------
-# Exemple d'utilisation (ce que le formulaire web appellerait)
-# ---------------------------------------------------------------------------
+@app.route("/vente")
+def page_vente():
+    return send_from_directory(".", "page-vente.html")
 
-if __name__ == "__main__":
-    club_exemple = {
-        "nom": "Diogountouro FC",
-        "logo_url": "https://exemple.com/logo_diogou.png",
-        "couleur_primaire": "#0B2545",
-        "couleur_secondaire": "#2E8B57",
-        "formation": "4-3-3",
-    }
+
+@app.route("/api/generer-seance", methods=["POST"])
+def api_generer_seance():
+    data = request.get_json()
+
+    email_club = data.get("email", "demo@diogountourofc.fr")
+    club = get_ou_creer_club(email_club)
 
     contexte_semaine = {
-        "effectif_dispo": 16,
-        "duree_totale_min": 90,
-        "date_seance": "02/08/2026",
-        "adversaire": "FC Rivalis",
+        "effectif_dispo": int(data["effectif_dispo"]),
+        "duree_totale_min": int(data["duree_totale_min"]),
+        "date_seance": data.get("date_seance") or str(date.today()),
+        "adversaire": data.get("adversaire") or "non précisé",
     }
 
-    historique_recent = ["Rondo 4v2", "Possession plein terrain"]
+    historique = get_historique_exercices(club["id"])
 
-    contenu = generer_contenu_seance(club_exemple, contexte_semaine, historique_recent)
-    pdf = generer_pdf(club_exemple, contenu, contexte_semaine)
-    print(f"PDF généré : {pdf}")
+    contenu = generer_contenu_seance(club, contexte_semaine, historique)
+    pdf_path = generer_pdf(club, contenu, contexte_semaine)
+
+    import json
+    conn = sqlite3.connect(DB_PATH)
+    conn.execute(
+        """INSERT INTO seances (club_id, date_seance, effectif_dispo, adversaire, focus, exercices_json, pdf_path)
+           VALUES (?, ?, ?, ?, ?, ?, ?)""",
+        (club["id"], contexte_semaine["date_seance"], contexte_semaine["effectif_dispo"],
+         contexte_semaine["adversaire"], data.get("focus"), json.dumps(contenu["exercices"]), str(pdf_path))
+    )
+    conn.commit()
+    conn.close()
+
+    return jsonify({"pdf_url": f"/pdf/{pdf_path.name}"})
+
+
+@app.route("/pdf/<filename>")
+def servir_pdf(filename):
+    return send_from_directory("output", filename)
+
+
+init_db()
+os.makedirs("output", exist_ok=True)
+
+
+if __name__ == "__main__":
+    app.run(debug=True, port=5000)
