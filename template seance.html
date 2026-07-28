@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<style>
+    @page { margin: 0; size: A4; }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+        font-family: 'Helvetica Neue', Arial, sans-serif;
+        color: #1a1a1a;
+        width: 210mm;
+        min-height: 297mm;
+        -webkit-print-color-adjust: exact;
+        print-color-adjustment: exact;
+    }
+
+    :root {
+        --couleur-primaire: {{couleur_primaire}};
+        --couleur-secondaire: {{couleur_secondaire}};
+    }
+
+    /* En-tête en table plutôt qu'en flexbox : rendu beaucoup plus fiable
+       sur le moteur de wkhtmltopdf pour des mises en page avec plusieurs
+       colonnes verticalement centrées. */
+    table.header {
+        width: 100%;
+        background: var(--couleur-primaire);
+        border-collapse: collapse;
+        -webkit-print-color-adjust: exact;
+        print-color-adjustment: exact;
+    }
+    table.header td {
+        padding: 24px 28px;
+        vertical-align: middle;
+        color: white;
+    }
+    .monogramme {
+        display: inline-block;
+        width: 56px;
+        height: 56px;
+        line-height: 56px;
+        text-align: center;
+        background: white;
+        color: var(--couleur-primaire);
+        font-weight: 700;
+        font-size: 20px;
+        border-radius: 8px;
+        -webkit-print-color-adjust: exact;
+        print-color-adjustment: exact;
+    }
+    .club-nom-cell { padding-left: 14px !important; }
+    .club-nom-cell h1 { font-size: 32px; font-weight: 700; margin: 0; letter-spacing: 0.01em; }
+    .club-nom-cell .meta { font-size: 13px; opacity: 0.85; margin-top: 4px; }
+    .badge-cell { text-align: right; white-space: nowrap; }
+    .badge {
+        background: var(--couleur-secondaire);
+        padding: 6px 14px;
+        border-radius: 20px;
+        font-size: 12px;
+        font-weight: 600;
+        display: inline-block;
+        -webkit-print-color-adjust: exact;
+        print-color-adjustment: exact;
+    }
+
+    .contenu { padding: 24px 28px; }
+    .contenu > * + * { margin-top: 16px; }
+
+    .objectif {
+        background: #f4f6f8;
+        border-left: 4px solid var(--couleur-secondaire);
+        padding: 12px 16px;
+        font-size: 13px;
+    }
+    .objectif strong { color: var(--couleur-primaire); }
+
+    table.exercice {
+        width: 100%;
+        border: 1px solid #e2e5e8;
+        border-radius: 8px;
+        border-collapse: collapse;
+        overflow: hidden;
+    }
+    .exercice .duree {
+        background: var(--couleur-primaire);
+        color: white;
+        text-align: center;
+        vertical-align: middle;
+        width: 70px;
+        font-weight: 700;
+        font-size: 14px;
+        padding: 12px 8px;
+        -webkit-print-color-adjust: exact;
+        print-color-adjustment: exact;
+    }
+    .exercice .detail { padding: 12px 16px; vertical-align: middle; }
+    .exercice .detail .titre { display: block; font-size: 14px; font-weight: 700; color: var(--couleur-primaire); }
+    .exercice .detail .consigne { display: block; font-size: 12px; color: #333; line-height: 1.4; margin-top: 4px; }
+    .exercice .categorie {
+        display: block;
+        font-size: 10px;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        color: var(--couleur-secondaire);
+        font-weight: 700;
+        margin-bottom: 2px;
+    }
+
+    .footer {
+        margin-top: 30px;
+        padding: 14px 28px;
+        border-top: 2px solid var(--couleur-primaire);
+        font-size: 10px;
+        color: #888;
+    }
+    .footer table { width: 100%; }
+    .footer td.droite { text-align: right; }
+</style>
+</head>
+<body>
+
+    <table class="header">
+        <tr>
+            <td style="width: 46px;">
+                <span class="monogramme">{{initiales}}</span>
+            </td>
+            <td class="club-nom-cell">
+                <h1>{{club_nom}}</h1>
+                <div class="meta">Séance du {{date_seance}} — {{effectif_dispo}} joueurs disponibles</div>
+            </td>
+            <td class="badge-cell">
+                <span class="badge">{{formation}}</span>
+            </td>
+        </tr>
+    </table>
+
+    <div class="contenu">
+        <div class="objectif">
+            <strong>Objectif de la séance :</strong> {{objectif_semaine}}
+        </div>
+
+        {{blocs_exercices}}
+
+    </div>
+
+    <div class="footer">
+        <table>
+            <tr>
+                <td>{{club_nom}} — Généré par CoachIA Foot</td>
+                <td class="droite">{{date_generation}}</td>
+            </tr>
+        </table>
+    </div>
+
+</body>
+</html>
